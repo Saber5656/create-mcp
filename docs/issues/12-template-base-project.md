@@ -4,8 +4,9 @@ Author base template (server, capabilities, unit tests, configs)
 
 ## Summary
 
-Author the always-copied `templates/ts/base/` file set: `package.json.tmpl` with the
-per-variant dependency matrix, tsconfig/biome/vitest configs, `src/server.ts` with
+Author the always-copied `templates/ts/base/` file set: the three package variants
+(`package.stdio.json.tmpl` / `package.http.json.tmpl` / `package.both.json.tmpl`),
+tsconfig/biome/vitest configs, `src/server.ts` with
 the three example capabilities (echo tool, project-info resource, greet prompt), the
 capability modules, `.env.example`, `.gitignore.tmpl`, and InMemoryTransport unit
 tests — everything DESIGN.md §5.1–5.2 promises except entrypoints, conformance

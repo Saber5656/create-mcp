@@ -39,8 +39,10 @@ unit tests. No process spawning, no CLI, no rendering.
      are re-rendered as `<jsonPath>: <message>` lines;
    - **path resolution rule**: after successful parse, resolve every relative path
      field (`http.cwd`, `stdio.cwd`, `http.expectedFailures`, `reportDir`) against
-     the **directory containing the config file**; downstream modules (lifecycle,
-     adapter) always receive absolute paths;
+     the **directory containing the config file**, and **materialize absent `cwd`
+     fields to that directory** — the returned resolved-config type has
+     non-optional absolute `cwd` on each present target section, so downstream
+     modules (lifecycle, adapter) never compute defaults themselves;
    - Returns discriminated result `{ ok: true, config } | { ok: false, errors: string[] }`
      — never throws for user-input problems; throws only on kit bugs.
 4. Report model per DESIGN.md §7.4: export the TS types, plus:

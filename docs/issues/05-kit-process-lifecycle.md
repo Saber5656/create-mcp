@@ -26,9 +26,9 @@ issue 07 via the SDK client).
 1. `spawn.ts` — `startServer(target: HttpTarget, runDir: string): Promise<RunningServer>`:
    - `child_process.spawn(argv[0], argv.slice(1), { cwd, shell: false, detached: true,
      stdio: ["ignore", "pipe", "pipe"] })`; `detached: true` so the negative PID kills
-     the group. `target.cwd` is already absolute when it reaches this module (the
-     config loader resolves relative paths against the config file's directory —
-     issue 04); absent `cwd` defaults to the config file's directory.
+     the group. `target.cwd` is always present and absolute by the time it reaches
+     this module — issue 04's loader resolves relative paths against the config
+     file's directory and materializes absent `cwd` to that directory.
    - stdout/stderr piped to `<runDir>/server-stdout.log` / `server-stderr.log`
      (create runDir; append mode off — one file per run).
    - `RunningServer = { pid, logs: {stdout, stderr}, stop(): Promise<StopResult>,

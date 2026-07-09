@@ -7,10 +7,12 @@ Issue plan: `docs/ISSUE_PLAN.md`. Issue drafts: `docs/issues/*.md`.
 ## 1. Product definition
 
 **create-mcp** is a wizard that generates Model Context Protocol (MCP) server projects
-that are *verifiably conformant*: every generated project ships wired to the official
-MCP conformance suite, runs it in CI, and carries a ready-to-activate conformance badge
-in its README (activation = replacing the badge's owner/repo placeholder after the
-first push to GitHub — a documented one-line step, §6.3).
+that are *verifiably conformant*: HTTP-capable projects (`http`/`both` variants) ship
+wired to the official MCP conformance suite and run it in CI; stdio-only projects run
+the kit's clearly-labeled smoke checks (the official suite tests HTTP endpoints only —
+ADR-001/ADR-006). Every generated project carries a ready-to-activate conformance
+badge in its README (activation = replacing the badge's owner/repo placeholder after
+the first push to GitHub — a documented one-line step, §6.3).
 
 One sentence pitch: *"`npm create @saber5656/mcp` gives you an MCP server that proves
 it speaks MCP."*
@@ -247,7 +249,8 @@ Zod-validated at CLI start (a broken bundled manifest is a defect → exit 4):
 {
   "version": 1,
   "files": [
-    { "source": "base/package.json.tmpl", "target": "package.json", "substitute": true },
+    { "source": "base/package.both.json.tmpl", "target": "package.json",
+      "substitute": true, "when": { "transport": ["both"] } },
     { "source": "http/src/http.ts", "target": "src/http.ts", "when": { "transport": ["http", "both"] } },
     { "source": "ci/github/workflows/conformance.pnpm.yml.tmpl",
       "target": ".github/workflows/conformance.yml",
@@ -442,8 +445,11 @@ report on stderr only — there is nothing measured to persist.
 
 The badge is the generated workflow's status badge:
 `https://github.com/<owner>/<repo>/actions/workflows/conformance.yml/badge.svg`.
-Semantics: green = official suite (`active`, spec 2025-11-25) + smoke checks passed on
-default branch. The kit's GitHub summary table is the human-readable proof detail.
+Semantics (ADR-006): green = official suite (`active`, spec 2025-11-25) + smoke
+checks passed on the default branch — except stdio-only projects, whose badge covers
+the kit's smoke checks alone and whose README must say so (the official suite cannot
+test stdio servers). The kit's GitHub summary table is the human-readable proof
+detail.
 
 ### 6.4 Official-suite adapter (BND-5)
 

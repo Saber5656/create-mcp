@@ -158,7 +158,10 @@ lifecycle and integration proof.
    PR; integration (10), CLI e2e (23), and dogfood (24) jobs join as they land.
 3. **Release gate**: the dogfood e2e (24) is the product guarantee — generate `both`
    project → install packed tarballs → build → **official conformance suite green**.
-   The release pipeline (25) refuses to publish if CI is not green on the tag.
+   The release pipeline (25) publishes only from the protected `main` merge commit
+   of the "Version Packages" PR, whose required status checks include quality,
+   kit-integration, cli-e2e, and dogfood (tags are outputs the release action
+   pushes after publishing, never triggers).
 4. **Security validation**: each BND row in DESIGN §9 has a named owning issue whose
    acceptance criteria include its adversarial cases (traversal names, ANSI injection,
    non-loopback URL refusal, etc.). Issue 26 adds automated dependency/action/code

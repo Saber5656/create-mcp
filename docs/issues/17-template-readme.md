@@ -4,10 +4,11 @@ Author generated README template with badge and security notes
 
 ## Summary
 
-Author `templates/ts/base/README.md.tmpl`: the generated project's README with the
-conformance badge, quickstart per transport, client-connection snippets, conformance
-documentation (including expected-failures usage), and a security-notes section that
-matches the template's actual defaults.
+Author the three generated-README template variants (`base/README.stdio.md.tmpl`,
+`base/README.http.md.tmpl`, `base/README.both.md.tmpl`): the generated project's
+README with the conformance badge, quickstart per transport, client-connection
+snippets, conformance documentation (including expected-failures usage), and a
+security-notes section that matches the template's actual defaults.
 
 ## Context
 

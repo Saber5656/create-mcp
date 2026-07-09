@@ -41,9 +41,11 @@ RELEASING.md — not by CI on this issue's PR.
      scoped to the release job only; top-level stays `contents: read`;
    - publish step: `pnpm changeset publish` with `NPM_CONFIG_PROVENANCE=true`;
      **no `NPM_TOKEN` secret** — Trusted Publishing (OIDC) is the auth path;
-   - guard: publish job runs only when CI checks on the merge commit are green
-     (rely on branch protection + `needs` on a quality job re-run in this
-     workflow);
+   - guard: publishing is gated by branch protection — RELEASING.md instructs the
+     user to add `quality`, `kit-integration`, `cli-e2e`, and `dogfood` to the
+     required status checks of `main` (ruleset), so the "Version Packages" PR
+     cannot merge (and thus nothing publishes) unless the full release gate is
+     green on its merge commit; the publish job itself re-runs no tests;
    - changesets/action pinned by SHA like every other action.
 3. Package metadata final pass (both packages):
    - kit: `exports` map (`.` → dist ESM entry + types) and `"sideEffects": false`;

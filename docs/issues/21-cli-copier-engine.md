@@ -18,8 +18,9 @@ itself. Token rules are DESIGN §4.3; copier guarantees are §4.4.
 ## Scope
 
 Two engine modules, the `index.ts` wiring (options → loadManifest → buildPlan →
-copy → post hooks seam for issue 22), dotfile-rename handling, and unit tests with
-temp dirs. Post-generation actions remain stubbed until 22.
+copy → post hooks seam for issue 22), dotfile target validation (no rename logic —
+manifest targets are explicit), and unit tests with temp dirs. Post-generation
+actions remain stubbed until 22.
 
 ## Detailed Requirements
 

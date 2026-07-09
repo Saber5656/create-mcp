@@ -25,15 +25,16 @@ dep of the create-mcp package for test purposes). Placeholders from issue 01 rem
 
 ## Detailed Requirements
 
-1. `package.json.tmpl` exactly per DESIGN §5.1 including tokens
+1. Three package variant files per DESIGN §4.1 — `base/package.stdio.json.tmpl`,
+   `base/package.http.json.tmpl`, `base/package.both.json.tmpl` — each a complete
+   valid JSON document targeting `package.json` with disjoint `when.transport`
+   (ADR-004: no in-file conditionals). Content per DESIGN §5.1 including tokens
    (`__MCP_TMPL_PACKAGE_NAME__`, `__MCP_TMPL_KIT_DEP_VERSION__`), `"private": true`,
-   engines node >=22 — with these variant rules expressed via THREE tmpl files if
-   needed (`package.stdio.json.tmpl` etc. with disjoint `when`) OR one file iff the
-   diff is token-expressible. Decide with ADR-004's rule: no in-file conditionals —
-   given scripts/deps differ per variant, ship **three variant files** with disjoint
-   `when.transport`, each a complete valid JSON document. Common fields must be kept
-   in sync by a unit test that parses all three and asserts the invariant fields
-   (name/version/engines/type/private, test+lint scripts) are identical.
+   engines node >=22 — **except the `conformance` script, which issue 15 adds**
+   (this issue ships the variants without it; DESIGN §5.1 shows the final
+   post-15 state). Common fields must be kept in sync by a unit test that parses
+   all three and asserts the invariant fields (name/version/engines/type/private,
+   test+lint scripts) are identical.
 2. `src/server.ts`: `export function createServer(): McpServer` per DESIGN §5.2 —
    registers `echo` tool (zod v4 input `{ message: z.string().min(1).max(1000) }`,
    returns text content; `message === "trigger-error"` → `isError: true` tool result
@@ -49,9 +50,12 @@ dep of the create-mcp package for test purposes). Placeholders from issue 01 rem
    documentation for users.
 4. Configs: `tsconfig.json` (strict, `module`/`moduleResolution` NodeNext, outDir
    dist, rootDir src, node types); `biome.json` minimal (recommended rules, 2-space);
-   `vitest.config.ts` plain; `.gitignore.tmpl` (node_modules, dist,
-   conformance-results, `.env`); `.env.example` with `PORT=3000`, `HOST=127.0.0.1`
-   and a comment "never commit real secrets; .env is gitignored".
+   `vitest.config.ts` plain; `dot-gitignore.tmpl` → target `.gitignore`
+   (node_modules, dist, conformance-results, `.env`); `dot-env.example` → target
+   `.env.example` with `PORT=3000`, `HOST=127.0.0.1` and a comment "never commit
+   real secrets; .env is gitignored". Dotfile sources use the `dot-` prefix per
+   DESIGN §4.1 (npm strips `.gitignore` from tarballs; no template source may begin
+   with a dot).
 5. Manifest entries added for every file (coverage test from issue 11 enforces).
 6. Template-compile harness: a vitest test copies base+stdio+http template sources
    into a temp dir (raw, tokens untouched but tokens only exist in .tmpl files —

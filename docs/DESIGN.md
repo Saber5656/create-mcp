@@ -8,7 +8,9 @@ Issue plan: `docs/ISSUE_PLAN.md`. Issue drafts: `docs/issues/*.md`.
 
 **create-mcp** is a wizard that generates Model Context Protocol (MCP) server projects
 that are *verifiably conformant*: every generated project ships wired to the official
-MCP conformance suite, runs it in CI, and carries a live conformance badge in its README.
+MCP conformance suite, runs it in CI, and carries a ready-to-activate conformance badge
+in its README (activation = replacing the badge's owner/repo placeholder after the
+first push to GitHub — a documented one-line step, §6.3).
 
 One sentence pitch: *"`npm create @saber5656/mcp` gives you an MCP server that proves
 it speaks MCP."*
@@ -62,8 +64,11 @@ generated project ──devDependency──▶ @saber5656/mcp-conformance-kit �
 @saber5656/create-mcp ──(generates)──▶ generated project        (no runtime coupling)
 ```
 
-`@saber5656/create-mcp` does not depend on the kit; it only writes the kit's name and
-version into generated `package.json` files. The kit does not depend on create-mcp.
+`@saber5656/create-mcp` has no runtime dependency on the kit; it only writes the kit's
+name and version into generated `package.json` files. To keep that version current it
+deliberately carries the kit as a **devDependency used purely as the version source**
+for the `__MCP_TMPL_KIT_DEP_VERSION__` token (§4.3) — nothing from the kit is imported.
+The kit does not depend on create-mcp.
 
 ### 2.1 External dependency policy
 
@@ -127,6 +132,10 @@ Behavior matrix:
 | target dir exists and is not empty | exit code 3, no writes (no --force in v1) |
 | user cancels wizard (Ctrl-C / clack cancel) | exit code 130, no partial writes |
 
+Default semantics: the defaults listed above are applied only by `--yes` or as the
+pre-selected answer in an interactive prompt — a field never silently defaults in
+non-interactive mode without `--yes` (interactivity stays deliberate in CI).
+
 Exit codes: `0` success, `2` invalid input/flags, `3` unsafe target directory,
 `4` generation failure (cleanup attempted), `5` post-generation step failed
 (project generated; message explains how to finish manually).
@@ -183,39 +192,52 @@ One base template composed with transport-conditional files — no divergent ful
 ```
 packages/create-mcp/templates/ts/
 ├── template.json                  # manifest (§4.2)
-├── base/                          # always copied
-│   ├── package.json.tmpl
+├── base/                          # default set (package/README files select by transport)
+│   ├── package.stdio.json.tmpl    # → package.json   when transport=stdio
+│   ├── package.http.json.tmpl     # → package.json   when transport=http
+│   ├── package.both.json.tmpl     # → package.json   when transport=both
+│   ├── README.stdio.md.tmpl       # → README.md      when transport=stdio
+│   ├── README.http.md.tmpl        # → README.md      when transport=http
+│   ├── README.both.md.tmpl        # → README.md      when transport=both
 │   ├── tsconfig.json
 │   ├── biome.json
 │   ├── vitest.config.ts
-│   ├── .gitignore.tmpl            # includes .env, dist/, conformance-results/
-│   ├── .env.example
-│   ├── README.md.tmpl
+│   ├── dot-gitignore.tmpl         # → .gitignore (dot- prefix: npm always strips .gitignore from tarballs)
+│   ├── dot-env.example            # → .env.example (dot- prefix for uniformity; no dot-named sources allowed)
 │   ├── src/server.ts              # createServer(): McpServer with echo tool, info resource, greet prompt
 │   ├── src/tools/echo.ts
 │   ├── src/resources/project-info.ts
 │   ├── src/prompts/greet.ts
 │   └── test/server.test.ts        # SDK Client ↔ InMemoryTransport unit tests
 ├── stdio/
-│   ├── src/stdio.ts               # StdioServerTransport entry
-│   └── test/smoke-stdio.md        # (doc stub; smoke run wiring lives in package.json scripts)
+│   └── src/stdio.ts               # StdioServerTransport entry
 ├── http/
-│   ├── src/http.ts                # express@5 + StreamableHTTPServerTransport entry (§5)
-│   └── conformance.config.json.tmpl
+│   ├── src/http.ts                # thin executable entry: env parsing, start, signal handling
+│   └── src/http-app.ts            # exported factory (app + transport) — the test seam (§5.4)
+├── conformance/
+│   ├── config.stdio.json.tmpl     # → conformance.config.json  when transport=stdio (stdio section only)
+│   ├── config.http.json.tmpl      # → conformance.config.json  when transport=http  (http section only)
+│   ├── config.both.json.tmpl      # → conformance.config.json  when transport=both  (both sections)
+│   └── expected-failures.yaml     # → conformance-expected-failures.yaml (all variants; comments only)
 └── ci/
     └── github/workflows/
         ├── conformance.npm.yml.tmpl    # when packageManager=npm  → .github/workflows/conformance.yml
         └── conformance.pnpm.yml.tmpl   # when packageManager=pnpm → same target
 ```
 
+Template sources never begin with a dot (npm packaging safety); the manifest `target`
+carries the real dotfile name, so the copier needs no rename logic.
+
 Generated file sets:
 
 | File | stdio | http | both |
 |---|---|---|---|
-| base/* | ✓ | ✓ | ✓ |
+| base/* (package.json / README.md resolve per variant) | ✓ | ✓ | ✓ |
 | src/stdio.ts | ✓ | – | ✓ |
-| src/http.ts, conformance.config.json | – | ✓ | ✓ |
-| .github/workflows/conformance.yml | ✓ | ✓ | ✓ (content adapts via tokens) |
+| src/http.ts, src/http-app.ts | – | ✓ | ✓ |
+| conformance.config.json | ✓ (stdio section) | ✓ (http section) | ✓ (both sections) |
+| conformance-expected-failures.yaml | ✓ | ✓ | ✓ |
+| .github/workflows/conformance.yml | ✓ | ✓ | ✓ (file selected per packageManager) |
 
 ### 4.2 Manifest schema (`template.json`)
 
@@ -329,7 +351,11 @@ Example capabilities (all three, always):
 
 ### 5.4 HTTP entrypoint rules (security boundary BND-6)
 
-`src/http.ts` (express 5 + `StreamableHTTPServerTransport`):
+The HTTP variant ships two files: `src/http-app.ts` exports the factory
+(`createHttpApp(options)` returning the configured express app plus transport —
+the seam that behavioral tests and future entrypoints import), and `src/http.ts` is
+the thin executable entry (env parsing → factory → listen → signal handling).
+Combined behavior (express 5 + `StreamableHTTPServerTransport`):
 
 | Requirement | Value |
 |---|---|
@@ -344,7 +370,9 @@ Example capabilities (all three, always):
 
 ### 5.5 Conformance wiring
 
-`conformance.config.json` (http/both variants; schema in §7.3):
+`conformance.config.json` (all variants — the stdio variant carries only the
+`stdio` section, the http variant only the `http` section; schema in §7.3).
+The both-variant content:
 
 ```jsonc
 {
@@ -406,7 +434,9 @@ checks; merges into one Report; renders terminal + JSON + (in CI) GitHub summary
 
 Exit codes: `0` all passed (expected-failures respected), `1` conformance/smoke
 failure, `2` config invalid, `3` server failed to start or become ready, `4` internal
-kit error. Machine-readable outcome is always `conformance-results/report.json`.
+kit error. `conformance-results/report.json` is written whenever at least one check
+executed (always for exit 0/1, and for exit 4 when partial results exist); exit 2/3
+report on stderr only — there is nothing measured to persist.
 
 ### 6.3 Badge contract
 
@@ -472,7 +502,9 @@ type ResolvedOptions = {
 
 ### 7.2 CopyPlan (create-mcp, internal)
 
-`{ files: { sourceAbs, targetAbs, substitute }[] }` — fully computed before any write.
+`{ targetRoot: string; mustCreate: boolean; files: { sourceAbs, targetAbs,
+substitute }[] }` — fully computed before any write (`mustCreate` comes from the
+target-directory validation result, §3.4).
 
 ### 7.3 Kit config schema (public)
 
@@ -530,8 +562,10 @@ type Report = {
 
 ## 8. Generated CI workflow
 
-`.github/workflows/conformance.yml` (template; identical skeleton for all variants,
-steps conditional by transport tokens):
+`.github/workflows/conformance.yml` (two complete template files selected by
+`when.packageManager` — §4.2; transport variance is fully encapsulated by the
+generated `conformance` script, so the workflow itself is transport-independent and
+token-free):
 
 - Triggers: `push` (default branch), `pull_request`, `workflow_dispatch`.
 - Permissions: `contents: read` only. Concurrency: cancel-in-progress per ref.
@@ -563,7 +597,7 @@ hardening pass. Trust boundaries and required mitigations:
 | BND-4 kit ↔ server traffic & reports | terminal escape / ANSI injection via server-controlled strings; kit pointed at third-party servers | terminal renderer strips C0/C1 controls & ANSI sequences from `detail` strings; config URL must be loopback unless `--allow-remote` is passed (explicit opt-in flag, documented as "only against servers you are authorized to test") |
 | BND-5 official-suite dependency | supply-chain drift/compromise via floating versions or npx | exact version pin; run installed bin only; lockfile; Dependabot + adapter contract tests gate upgrades |
 | BND-6 generated server surface | DNS rebinding; cross-origin access; secret leakage; oversized payloads; stack-trace disclosure | §5.4 table (127.0.0.1 bind, Origin→403, SDK rebinding protection, 1 MB body cap, error hygiene); `.env` gitignored + `.env.example` pattern; zod input validation on the example tool |
-| BND-7 release pipeline | npm token theft; tampered artifacts | npm **Trusted Publishing (OIDC) + provenance**; no long-lived npm tokens in repo secrets; scoped packages `publishConfig.access: "public"`; `files` allowlists; tag-triggered release workflow with least-privilege permissions |
+| BND-7 release pipeline | npm token theft; tampered artifacts | npm **Trusted Publishing (OIDC) + provenance**; no long-lived npm tokens in repo secrets; scoped packages `publishConfig.access: "public"`; `files` allowlists; Changesets version-PR release workflow (§11) with least-privilege permissions |
 | BND-8 CI workflows (repo + generated) | action supply chain; permission escalation | SHA-pinned actions; top-level `permissions: contents: read`; no `pull_request_target`; Dependabot for actions ecosystem |
 
 Secret-handling rules (repo-wide): no secrets in code, templates, tests, or fixtures;
@@ -589,9 +623,12 @@ v1 completion = all issue acceptance criteria + the dogfood e2e green in CI.
 ## 11. Versioning & release
 
 - Changesets; independent semver per package; both start at `0.1.0`.
-- Publish workflow: tag-driven, GitHub Actions, npm provenance, OIDC Trusted
-  Publishing. Manual user prerequisites (npm account/scope, repo settings) are
-  documented in the release issue as human steps.
+- Publish workflow: the standard Changesets **version-PR flow** — on push to `main`
+  the changesets action maintains a "Version Packages" PR; merging that PR triggers
+  publish (GitHub Actions, npm provenance, OIDC Trusted Publishing; the action also
+  pushes the release tags it creates). No long-lived npm tokens. Manual user
+  prerequisites (npm account/scope, Trusted Publisher registration) are documented
+  in the release issue as human steps.
 - The kit's public surface for semver purposes: CLI contract (§6.2), config schema
   (§7.3), report.json shape (§7.4). The create-mcp public surface: CLI contract (§3.2)
   and the generated-project contract (§5).

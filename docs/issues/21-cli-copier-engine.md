@@ -32,26 +32,26 @@ temp dirs. Post-generation actions remain stubbed until 22.
      any residue → listed in `unknownTokens`;
    - `kitDepVersion` source (DESIGN §4.3): create-mcp declares
      `@saber5656/mcp-conformance-kit` as a devDependency purely as a version
-     reference; a build step reads that spec and emits a generated
-     `src/kit-version.ts` constant (add the build step + a test asserting the
-     constant matches the manifest devDependency).
-2. `copier.ts` — `execute(plan, tokenValues): Promise<CopyResult>`:
-   - create targetRoot if `mustCreate` (19's result);
-   - per file: re-assert `targetAbs` starts with `targetRoot + sep` (throw
+     reference; add `scripts/gen-kit-version.mjs` and wire the package build as
+     `"build": "node scripts/gen-kit-version.mjs && tsup"` so the generated,
+     gitignored `src/kit-version.ts` constant always exists before compilation
+     (plus a test asserting the constant equals the devDependency spec).
+2. `copier.ts` — `execute(plan: CopyPlan, tokenValues): Promise<CopyResult>` (the
+   plan carries `targetRoot` and `mustCreate` per DESIGN §7.2):
+   - create `plan.targetRoot` if `plan.mustCreate` (value originates from issue
+     19's `checkTargetDir`);
+   - per file: re-assert `targetAbs` starts with `plan.targetRoot + sep` (throw
      `CopierInvariantError` otherwise — this is a bug trap, not user error);
      mkdir -p parent; read source; if `substitute` → run tokens (any
      `unknownTokens` → fail the run); write with mode 0644, `flag: "wx"`
      (fail if exists — plan collisions are bugs);
-   - dotfile rule: template sources named `.gitignore.tmpl` etc. are stored with a
-     `dot-` prefix instead (`dot-gitignore.tmpl`) to survive npm packaging;
-     the manifest `target` carries the real name (`.gitignore`) — copier needs no
-     rename logic (manifest is explicit); add a repo test asserting no template
-     source file starts with `.` (npm tarball safety) except none;
+   - dotfile sources never exist (DESIGN §4.1 rule, enforced by issue 11's schema:
+     `dot-` prefixed sources map to dotfile targets) — the copier needs no rename
+     logic; this issue adds the repo test asserting no file under `templates/`
+     starts with a dot;
    - track every path created (files + dirs it made); on any error: remove tracked
      files, then tracked dirs deepest-first, never touching pre-existing paths;
      rethrow as `GenerationError` (CLI maps → exit 4).
-3. `.tmpl` suffix rule: manifest `source` may end in `.tmpl`; `target` never does
-   (loader-level validation added here or in 11 follow-up within this issue).
 4. Wiring in `index.ts`: resolve options (18/19/20) → load manifest → buildPlan →
    execute → (issue-22 seam) → success summary (files written count + target path).
    Exit codes: manifest/plan/copy internal failures → 4 (with cleanup note in the
@@ -74,8 +74,9 @@ temp dirs. Post-generation actions remain stubbed until 22.
       empty-dir edge → run fails cleanly with cleanup).
 - [ ] Escape-attempt test: hand-built malicious plan (target outside root) throws
       `CopierInvariantError` before any write.
-- [ ] No template source file begins with a dot (repo test), and every `dot-`
-      prefixed source maps to the correct dotfile target.
+- [ ] No file under `templates/` begins with a dot (repo test), and every `dot-`
+      prefixed source maps to the correct dotfile target (checked against the
+      manifest).
 
 ## Validation
 
@@ -84,7 +85,7 @@ temp dirs. Post-generation actions remain stubbed until 22.
 
 ## Dependencies
 
-11, 18, 19.
+11, 12 (real bundled template content used by the acceptance tests), 18, 19.
 
 ## Non-goals
 

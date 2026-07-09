@@ -24,8 +24,21 @@ No generation logic.
 ## Detailed Requirements
 
 1. Implement `promptForMissing(unresolved: FieldSet, partial: Partial<ResolvedOptions>):
-   Promise<PromptResult>` where `PromptResult = { cancelled: true } |
-   { cancelled: false, answers: … }`.
+   Promise<PromptResult>` with these exact types (shared in `context.ts`):
+   ```ts
+   type Field = "targetDir" | "packageName" | "transport" | "packageManager" | "git" | "install";
+   type FieldSet = ReadonlySet<Field>;   // issue 18: every field NOT explicitly
+                                         // provided via argv/flags — defaultable
+                                         // fields are included when not explicit
+   type PromptAnswers = Partial<{
+     targetDir: string; packageName: string;
+     transport: "stdio" | "http" | "both";
+     packageManager: "npm" | "pnpm";
+     git: boolean; install: boolean;
+   }>;                                    // exactly the prompted keys are present
+   type PromptResult = { cancelled: true } | { cancelled: false; answers: PromptAnswers };
+   ```
+   Defaults from issue 18's table appear as the pre-selected choice of each prompt.
 2. Flow and copy (exact strings, EN):
    - intro: `create-mcp — MCP server project generator`;
    - S1 targetDir (text): "Where should the project be created?" placeholder

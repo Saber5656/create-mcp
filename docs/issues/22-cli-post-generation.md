@@ -37,8 +37,10 @@ spawn-spies and one real-git test. No changes to generation itself.
      `cd <dir> && <pm> install` remediation (exact §3.5 wording);
    - skipped when options.install is false → next-steps must include the install
      step instead.
-3. `next-steps.ts` — `renderNextSteps(options, results): string`:
-   - always: `cd <relative-or-absolute-shortest-form>`;
+3. `next-steps.ts` — `renderNextSteps(options, results, display: { color: boolean }): string`
+   (the caller computes `color` from `isTTY && !NO_COLOR`, same rule as issue 09):
+   - always: a `cd` line whose path rule is fixed — `path.relative(process.cwd(),
+     targetDir)` when it does not start with `..`, otherwise the absolute path;
    - if install skipped/failed: `<pm> install`;
    - build + test lines; then per transport: `npm run dev:stdio` / `dev:http`
      (or pnpm equivalents based on chosen PM — command strings must match the
@@ -47,10 +49,11 @@ spawn-spies and one real-git test. No changes to generation itself.
    - conformance line: build-then-conformance pair (DESIGN §5.5 order);
    - badge activation pointer: "see README — replace the badge owner/repo
      placeholder after pushing to GitHub";
-   - plain text, no color codes when `!isTTY` or `NO_COLOR`.
+   - plain text when `display.color` is false.
 4. Ordering (wired after copier): git → install → next-steps; each step's outcome
-   line printed as it completes (clack-style `log.step`/`log.warn` reused from 20's
-   adapter where TTY, plain lines otherwise).
+   line printed as it completes via two local helpers `printStep(msg)` /
+   `printWarn(msg)` defined in this issue (plain lines; optional color per the
+   same `display.color` flag — no dependency on issue 20's prompt adapter).
 
 ## Acceptance Criteria
 
@@ -72,6 +75,7 @@ install) timing pasted in PR.
 
 ## Dependencies
 
+15 (the generated `conformance` script this issue's next-steps must match),
 18 (options/seam), 21 (runs after copier).
 
 ## Non-goals

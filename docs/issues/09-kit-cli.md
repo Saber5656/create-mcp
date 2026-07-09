@@ -28,10 +28,14 @@ smoke fixture server (http path is integration-tested in issue 10).
    - `smoke [--config <path>]` — exact alias for `run --only stdio`
    - `print-config [--config <path>] [--allow-remote]` — prints resolved config JSON
      (with defaults applied) to stdout, exit 0/2 only.
-2. `run` sequence: loadConfig (`allowRemote` from flag) → select sections by
-   presence + `--only` → if http: startServer → waitUntilReady → runOfficial →
-   stop (always, `finally`) → if stdio: runSmoke → merge Report → writeReport →
+2. `run` sequence: `loadConfig(path, { allowRemote })` (issue 04's exact signature;
+   the flag is passed through, never re-parsed here) → select sections by presence
+   + `--only` → if http: startServer → waitUntilReady → runOfficial → stop (always,
+   `finally`) → if stdio: runSmoke → merge Report → finalizeReport → writeReport →
    renderTerminal(stdout) → appendGithubSummary.
+   Report persistence per DESIGN §6.2: report.json is written whenever at least one
+   check executed — always on exit 0/1; on exit 4 only when partial section results
+   exist; never on exit 2/3 (nothing measured).
 3. Exit codes exactly per DESIGN §6.2: 0 all-green (expected-fail semantics
    respected), 1 any section failed, 2 config error (including `--only http` when
    config has no http section — message says so), 3 `ServerStartError`/
@@ -52,6 +56,8 @@ smoke fixture server (http path is integration-tested in issue 10).
 - [ ] Unit tests with injected fakes cover every exit code 0–4, `--only` behavior,
       alias equivalence of `smoke`, and the always-stop guarantee (official adapter
       throwing still stops the server — spy on `stop`).
+- [ ] Report-persistence matrix tested: written on 0 and 1; written on 4 with
+      partial results and not without; absent on 2 and 3.
 - [ ] Real-modules test: `run` against a config pointing at the good stdio fixture
       (07) exits 0 and writes a valid report.json.
 - [ ] `print-config` output parses as JSON and equals the zod-resolved config.

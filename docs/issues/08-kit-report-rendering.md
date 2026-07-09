@@ -27,9 +27,13 @@ process management, no CLI parsing.
    `<reportDir>/report.json` (2-space indent, trailing newline, UTF-8); returns the
    absolute path. Never merges with previous runs (overwrite).
 2. `terminal.ts` — `renderTerminal(report, { color: boolean }): string`:
-   - Sections: header (kit version, spec version, timestamps, target), official
-     table (scenario / id / status), smoke table (id / level / status), summary line
-     (`total/pass/fail/expected_fail/skip`), final verdict line.
+   - Sections: header (kit version, spec version, timestamps; target rendered per
+     section — the official block shows its `url`, the smoke block shows its
+     `command`, and a both-sections report shows each in its own block), official
+     table (scenario / id / status), smoke table (id / level / status), summary
+     line, final verdict line. Summary line renders the §7.4 `summary` fields
+     (model field names like `expectedFail` are camelCase; display labels may use
+     `expected_fail` — the mapping is fixed here, not ad hoc).
    - `color` auto-off when `!process.stdout.isTTY` or `NO_COLOR` env is set (decided
      by the caller in 09; this module just obeys the flag). Status glyphs: pass `✓`,
      fail `✗`, expected_fail `≈`, unexpected_pass `!`, skip `-` (ASCII fallbacks not
@@ -41,7 +45,9 @@ process management, no CLI parsing.
      details). A dedicated unit test feeds ANSI/OSC/BEL/newline-bomb payloads and
       asserts the output is inert plain text.
 3. `github-summary.ts` — `appendGithubSummary(report)`:
-   - no-op unless `process.env.GITHUB_STEP_SUMMARY` is a writable path;
+   - no-op unless `process.env.GITHUB_STEP_SUMMARY` is set; if it is set but the
+     append fails (unwritable path, ENOENT), log one warning line to stderr and
+     continue — a summary failure must never change the run's exit code;
    - appends: H2 title with verdict emoji, a markdown table per section, the summary
      row, and a footnote naming engine + version + spec version (badge provenance,
      ADR-006). Markdown cell content passes the same sanitizer plus `|`/backtick
@@ -60,6 +66,8 @@ process management, no CLI parsing.
       input Report.
 - [ ] With `GITHUB_STEP_SUMMARY` unset, `appendGithubSummary` performs zero fs calls
       (spied in test).
+- [ ] With `GITHUB_STEP_SUMMARY` pointing at an unwritable path, the function warns
+      on stderr and returns normally (no throw).
 
 ## Validation
 

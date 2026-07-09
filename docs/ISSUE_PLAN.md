@@ -9,22 +9,26 @@ win and the GitHub Issues are stale.
 v1 is complete when **all 27 issues below are closed with their acceptance criteria
 validated**, at which point the following must be true end to end:
 
-1. `npm create @saber5656/mcp` (and `pnpm create @saber5656/mcp`,
-   `npx @saber5656/create-mcp`) generates a TypeScript MCP server project in any of
-   the three transport variants (`stdio`, `http`, `both`), interactively or fully
-   non-interactively (`--yes`/flags).
+1. The create-mcp CLI generates a TypeScript MCP server project in any of the three
+   transport variants (`stdio`, `http`, `both`), interactively or fully
+   non-interactively (`--yes`/flags) — proven from the packed npm artifact by the
+   dogfood job. The `npm create @saber5656/mcp` / `pnpm create @saber5656/mcp` /
+   `npx @saber5656/create-mcp` invocations become live once the user completes the
+   documented first publish (issue 25's RELEASING.md checklist — publishing
+   credentials are a manual user step by policy).
 2. Every generated project builds, its unit tests pass, and `npm run conformance`
    runs the exactly-pinned official `@modelcontextprotocol/conformance` suite
    (HTTP variants) plus the kit's stdio smoke checks (stdio variants) against spec
    **2025-11-25**, producing `conformance-results/report.json` and a terminal report.
 3. Every generated project contains a SHA-pinned GitHub Actions conformance workflow
-   whose status badge is embedded in its README, with a per-run summary table in
-   `$GITHUB_STEP_SUMMARY`.
+   whose status badge is embedded in its README (owner/repo placeholder; activation
+   is a documented one-line step after first push — ADR-006), with a per-run summary
+   table in `$GITHUB_STEP_SUMMARY`.
 4. Both packages (`@saber5656/create-mcp`, `@saber5656/mcp-conformance-kit`) are
-   publishable via the tag-driven release workflow with npm provenance (manual npm
-   account/scope prerequisites documented), and this repo's CI enforces lint,
-   typecheck, unit, integration, CLI e2e, and the dogfood e2e (generate → install →
-   official suite green) on Node 22 and 24.
+   publishable via the Changesets version-PR release workflow with npm provenance
+   (manual npm account/scope prerequisites documented), and this repo's CI enforces
+   lint, typecheck, unit tests on Node 22 and 24, plus integration, CLI e2e, and the
+   dogfood e2e (generate → install → official suite green) on Node 24.
 5. The security model in DESIGN.md §9 is implemented: every BND-1..8 mitigation is
    covered by a shipped issue and validated by a test or documented manual check.
 
@@ -84,13 +88,13 @@ nothing in the v1 promise lives outside this issue list.
 | 13 | 12 |
 | 14 | 12 |
 | 15 | 04 (config contract), 13, 14 |
-| 16 | 15 |
+| 16 | 11, 15 |
 | 17 | 13, 14, 15, 16 |
 | 18 | 01 |
 | 19 | 18 |
 | 20 | 18, 19 |
-| 21 | 11, 18, 19 |
-| 22 | 18 |
+| 21 | 11, 12, 18, 19 |
+| 22 | 15, 18, 21 |
 | 23 | 17, 20, 21, 22 |
 | 24 | 10, 16, 23 |
 | 25 | 24 |
@@ -104,7 +108,7 @@ nothing in the v1 promise lives outside this issue list.
 | W0 Foundation | 01, 02, 03 | 02∥03 after 01 | repo builds, CI green, community docs |
 | W1 Kit | 04 → (05∥07∥08) → 06 → 09 → 10 | see deps | kit verifies any MCP server (http official + stdio smoke) |
 | W2 Templates | 11 → 12 → (13∥14) → 15 → 16 → 17 | 13∥14 | complete template set, statically valid |
-| W3 Wizard | 18 → 19 → (20∥21∥22) → 23 | 20∥21∥22 | working `create-mcp` CLI, e2e-tested |
+| W3 Wizard | 18 → 19 → (20∥21∥22) → 23 | 20∥21∥22 (21 also needs W2's 12; 22 also needs W2's 15) | working `create-mcp` CLI, e2e-tested |
 | W4 Ship | 24 → 25, 26∥, 27 | 26 anytime after 02 | dogfood gate green, releasable, hardened |
 
 W1 and W2/W3 can proceed in parallel by different agents after W0; issue 15 is the
@@ -137,7 +141,7 @@ issue 04 — by file contract, not by code import).
 | §7.3 kit config schema | 04 |
 | §7.4 report model | 04, 08 |
 | §8 generated workflow (BND-8) | 16 |
-| §9 security model | 19, 21, 22 (BND-1..3), 08/09 (BND-4), 06 (BND-5), 14 (BND-6), 25 (BND-7), 02/16/26 (BND-8) |
+| §9 security model | 19 (BND-1), 11/21 (BND-2), 05/09/22 (BND-3), 08/09 (BND-4), 06 (BND-5), 14 (BND-6), 25 (BND-7), 02/16/26 (BND-8) |
 | §10 testing strategy | 02, 10, 23, 24 + per-issue Validation sections |
 | §11 release | 25 |
 | §12 scope ledger | this file §7, §8 |

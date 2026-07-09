@@ -26,12 +26,15 @@ Four markdown files at repo root. English. No website, no logo work.
    - **Status banner**: pre-release, APIs may change until 0.1.0 publish.
    - Planned usage block: `npm create @saber5656/mcp`, wizard question list, the three
      transport variants, `npm run conformance`.
-   - "How the badge works" section: exactly ADR-006 semantics — green = official
-     suite (`active`, spec 2025-11-25) + smoke checks on default branch; explicitly
-     states what it does NOT prove (security, quality of tool logic).
+   - "How the badge works" section carrying ADR-006's two canonical claims: what
+     green means per variant (official suite `active` @ spec 2025-11-25 + smoke
+     checks; smoke checks only for stdio-only projects) and the ADR-006 negative
+     claim (does not prove security, code quality, or tool-logic correctness).
    - Architecture sketch (two packages + official suite, may reuse DESIGN §2 diagram).
-   - Links: docs/DESIGN.md, docs/ISSUE_PLAN.md, MCP spec 2025-11-25, official
-     conformance repo, inspector.
+   - Links: docs/DESIGN.md, docs/ISSUE_PLAN.md,
+     https://modelcontextprotocol.io/specification/2025-11-25,
+     https://github.com/modelcontextprotocol/conformance,
+     https://github.com/modelcontextprotocol/inspector.
 2. `SECURITY.md`: private reporting via GitHub Security Advisories ("Report a
    vulnerability" on this repo); no email channel; first response target 7 days;
    supported-versions table (latest minor only); explicitly asks reporters not to
@@ -41,15 +44,18 @@ Four markdown files at repo root. English. No website, no logo work.
    in the same PR); conventional-ish commit style (imperative subject, no enforced
    tooling in v1); PR checklist (CI green, docs updated, changeset added once issue 25
    lands — mark as "after release pipeline exists").
-4. `CODE_OF_CONDUCT.md`: Contributor Covenant v2.1 verbatim with enforcement contact
-   set to the GitHub profile contact of @Saber5656 (no personal email in the file).
+4. `CODE_OF_CONDUCT.md`: Contributor Covenant v2.1 standard text, modified ONLY at
+   the enforcement-contact placeholder, which must read exactly: "the maintainer via
+   https://github.com/Saber5656 or a private report through this repository's
+   Security Advisories page". No personal email anywhere in the file.
 
 ## Acceptance Criteria
 
 - [ ] All four files exist, pass `pnpm lint` (Biome markdown passthrough — no broken
       formatting), and contain no personal email addresses or secrets.
-- [ ] README badge section matches ADR-006 semantics word-for-word on the two claims
-      (what green means; what it does not prove).
+- [ ] README badge section carries ADR-006's two canonical claims (what green means
+      per variant; what the badge does not prove) semantically intact — reviewer
+      diffs against the ADR-006 Decision paragraph.
 - [ ] Every relative link in the four files resolves (`git ls-files` check or link
       script); every external link is HTTPS.
 - [ ] README contains no invented CLI flags — only flags defined in DESIGN.md §3.2.

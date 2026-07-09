@@ -19,10 +19,10 @@ this issue is fully testable without a TTY.
 ## Scope
 
 `cli.ts`, `options.ts`, `src/context.ts` (shared types: RawOptions, ResolvedOptions
-per DESIGN §7.1), unit tests. `index.ts` wiring becomes real here (parse → resolve →
-placeholder "would generate" output until issue 21 lands — keep behind a
-`GENERATE_IMPL` seam: options resolution returns; generation invoked via an injected
-function defaulting to a stub that prints the resolved plan summary and exits 0).
+per DESIGN §7.1), unit tests. `index.ts` wiring becomes real here: exported
+`run(argv: string[], deps?: { generate?: (options: ResolvedOptions) => Promise<void> })`
+— the `deps.generate` injection point is the seam issue 21 fills; its default here
+is a stub that prints the resolved options summary and returns (exit 0).
 
 ## Detailed Requirements
 
@@ -31,19 +31,25 @@ function defaulting to a stub that prints the resolved plan summary and exits 0)
    (choices-validated), `--git`/`--no-git`, `--install`/`--no-install`, `--yes`,
    `--name <string>`, `--version`, `--help`. Unknown flags → commander error →
    exit 2 with usage hint.
-2. `resolveOptions(raw, env, isTTY, promptFn)`:
-   - defaults: transport `both`, git `true`, install `true`;
-   - `packageManager` default from `npm_config_user_agent` (`pnpm/` prefix → pnpm,
-     else npm); explicit `--pm` wins;
-   - `--name` defaults to sanitized basename of targetDir (sanitization rule:
-     lowercase, spaces→`-`, strip characters outside `[a-z0-9-_.]`; if result is
-     empty → must prompt or fail);
-   - TTY policy matrix (DESIGN §3.2): compute the set of unresolved fields; if
-     non-empty and TTY → call `promptFn(unresolved, partial)`; if non-empty, no TTY,
-     no `--yes` → return error listing exact missing flags (message format:
-     `missing required options in non-interactive mode: --transport …`); `--yes`
-     fills all remaining defaults (targetDir has no default — targetDir missing +
-     `--yes` + no TTY is still an error naming the positional).
+2. `resolveOptions(raw, env, isTTY, promptFn)` — two-layer semantics (DESIGN §3.2
+   default rule: defaults apply only via `--yes` or as prompt pre-selections; no
+   silent defaulting in non-interactive mode):
+   - **explicit layer**: values provided via argv (positional targetDir) and flags;
+   - **unresolved set** = every field not explicitly provided, out of
+     `{ targetDir, packageName, transport, packageManager, git, install }`;
+   - default values (used by `--yes` and as prompt pre-selections only): transport
+     `both`; git `true`; install `true`; packageManager from
+     `npm_config_user_agent` (`pnpm/` prefix → pnpm, else npm); packageName =
+     `sanitizeToPackageName(basename(targetDir))` (delegate to issue 19's function
+     — single source of the sanitization rule; `null` result means the field stays
+     unresolved and must be prompted or fails);
+   - resolution matrix:
+     | context | behavior |
+     |---|---|
+     | TTY, no `--yes`, unresolved ≠ ∅ | `promptFn(unresolved, partial)` asks **all** unresolved fields (S1–S6 reachable), defaults pre-selected |
+     | TTY, `--yes` | fill unresolved from defaults; prompt only for `targetDir` if missing (it has no default) |
+     | non-TTY, `--yes` | fill unresolved from defaults; missing `targetDir` → error naming the positional |
+     | non-TTY, no `--yes`, unresolved ≠ ∅ | error listing the exact missing flags (`missing required options in non-interactive mode: --transport …`) |
    - Returns `{ ok: true, options } | { ok: false, exitCode: 2, message }`.
 3. `ResolvedOptions` per DESIGN §7.1 (absolute targetDir via `path.resolve`).
 4. Exit-code ownership: `index.ts` maps resolution failure → 2; prompt cancellation
@@ -52,10 +58,12 @@ function defaulting to a stub that prints the resolved plan summary and exits 0)
 
 ## Acceptance Criteria
 
-- [ ] Unit tests: every §3.2 matrix row; both PM detections; `--pm` override;
-      name sanitization cases (`My App` → `my-app`, unicode-only → error/prompt);
-      `--yes` with and without targetDir; unknown flag → exit 2.
-- [ ] `promptFn` is called with exactly the unresolved field set (asserted).
+- [ ] Unit tests: every row of the resolution matrix above; both PM detections;
+      `--pm` override; sanitization delegation (asserted to call issue 19's
+      `sanitizeToPackageName`; unicode-only basename → field stays unresolved);
+      `--yes` with and without targetDir in TTY and non-TTY; unknown flag → exit 2.
+- [ ] `promptFn` is called with exactly the unresolved field set — including
+      defaultable fields when they were not explicitly provided (asserted).
 - [ ] No direct `process.exit` outside `index.ts` (grep test).
 - [ ] `node dist/index.js --help` output lists every flag from DESIGN §3.2 and no
       others (snapshot test).

@@ -29,12 +29,18 @@ fixture variants. No CLI (09), no terminal rendering (08).
 2. Implement exactly the 11 checks SMOKE-INIT-01 … SMOKE-SHUTDOWN-01 as specified in
    DESIGN.md §6.5, including the `MUST*` conditional rule: capability-gated checks
    report `skip` with detail "capability not declared" when absent.
+   SMOKE-INIT-01 verdict rule: the negotiated `protocolVersion` must equal
+   `"2025-11-25"` exactly — anything else is a MUST **fail** with both the
+   negotiated and expected values in `detail` (no soft "reported" state).
 3. Sample-argument generation for SMOKE-TOOL-02/03: from the tool's JSON
    `inputSchema`, support object schemas whose properties are `string` (use
    `"sample"` or first `enum` value), `number`/`integer` (`1`), `boolean` (`true`);
    required-only population. Any other shape → `skip` with reason (never guess).
    For SMOKE-TOOL-03, invalid args = required string property sent as `12345`
    (number); if no such property exists → `skip`.
+   SMOKE-PROMPT-02 argument generation follows the same leaf-schema rule applied to
+   the prompt's declared arguments (required, string-valued: use `"sample"`); a
+   prompt whose required arguments fall outside that rule → `skip` with reason.
 4. stdout hygiene (SMOKE-STDOUT-01): run the child via
    `StdioClientTransport({ command, args, cwd })`. Since the SDK owns the pipe,
    detect pollution as follows: transport-level parse errors surfaced by the SDK
@@ -45,14 +51,21 @@ fixture variants. No CLI (09), no terminal rendering (08).
    - connect with 10s init timeout; init failure → SMOKE-INIT-01 fail and remaining
      checks `skip` (detail "not connected");
    - execute checks sequentially in catalog order (they share one session);
-   - SMOKE-SHUTDOWN-01: `await client.close()` then watch child exit ≤5s, code 0;
+   - SMOKE-SHUTDOWN-01: `await client.close()` then watch the child exit ≤5s with
+     code 0. Exit observation contract: obtain the child PID from the SDK
+     transport's exposed process accessor (`StdioClientTransport` exposes the
+     spawned child/pid in SDK 1.x — verify the exact property against the installed
+     SDK and record it in the PR), then poll `process.kill(pid, 0)` until ESRCH or
+     deadline. If the installed SDK exposes no such accessor, fail this issue's
+     implementation back to design review rather than reaching into private fields
+     — do not ship a private-field dependency;
    - `status: "fail"` iff any MUST check failed; SHOULD failures keep
      `status: "pass"`. Do not implement a `--strict` flag in v1 (reserved for
      v1.1 per DESIGN §6.5).
-6. All server-provided strings placed into `detail` must pass through
-   `report/model.ts`'s `truncateDetail` helper — add it here if 08 hasn't landed:
-   max 500 chars, marker on truncation. (Sanitization of control characters is 08's
-   renderer job; detail strings stay raw in the model.)
+6. All server-provided strings placed into `detail` must pass through the report
+   model's `truncateDetail` helper (owned by issue 04): max 500 chars, marker on
+   truncation. (Sanitization of control characters is 08's renderer job; detail
+   strings stay raw-but-truncated in the model.)
 7. Fixtures under `test/fixtures/smoke/`: `good-server.ts` (echo tool with required
    string arg, one resource, one prompt, proper stderr logging), `bad-stdout.ts`
    (console.log noise before/while serving), `no-exit.ts` (ignores close),

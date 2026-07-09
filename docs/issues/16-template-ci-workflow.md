@@ -43,7 +43,9 @@ encapsulates transport variance). Badge markup in README is issue 17.
    `pnpm run conformance`.
 4. Every `uses:` pinned to a full 40-char commit SHA with a trailing `# vX.Y.Z`
    comment (actions/checkout, actions/setup-node, actions/upload-artifact,
-   pnpm/action-setup). Record resolved SHAs in the PR.
+   pnpm/action-setup). Resolving the current stable major tag of each action to its
+   SHA (via `gh api repos/<owner>/<repo>/git/ref/tags/<tag>`) is part of this
+   issue; record the tag→SHA table in the PR.
 5. A comment at the top of both files: the filename `conformance.yml` is load-bearing
    (README badge URL points at it — do not rename).
 6. No tokens in these files (they carry no project-specific values); therefore no
@@ -54,9 +56,11 @@ encapsulates transport variance). Badge markup in README is issue 17.
 
 ## Acceptance Criteria
 
-- [ ] `actionlint` passes on both rendered variants (repo test invoking
-      `npx actionlint` on plan output for a dummy npm project and a dummy pnpm
-      project).
+- [ ] `actionlint` passes on both rendered variants. Tool source is fixed: repo CI
+      runs the official actionlint binary via its documented download script
+      (version-pinned) in a dedicated step; locally the repo test invokes an
+      `actionlint` binary from PATH and reports `skip` with a warning when absent
+      (no npm wrapper dependency is added).
 - [ ] Grep test: every `uses:` line in both files matches `@[0-9a-f]{40} # v`.
 - [ ] Manifest coverage green; `buildPlan` for `(both, npm)` and `(both, pnpm)`
       each select exactly one workflow file targeting

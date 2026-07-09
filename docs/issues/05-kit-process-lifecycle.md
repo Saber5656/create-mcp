@@ -26,18 +26,22 @@ issue 07 via the SDK client).
 1. `spawn.ts` — `startServer(target: HttpTarget, runDir: string): Promise<RunningServer>`:
    - `child_process.spawn(argv[0], argv.slice(1), { cwd, shell: false, detached: true,
      stdio: ["ignore", "pipe", "pipe"] })`; `detached: true` so the negative PID kills
-     the group.
+     the group. `target.cwd` is already absolute when it reaches this module (the
+     config loader resolves relative paths against the config file's directory —
+     issue 04); absent `cwd` defaults to the config file's directory.
    - stdout/stderr piped to `<runDir>/server-stdout.log` / `server-stderr.log`
      (create runDir; append mode off — one file per run).
    - `RunningServer = { pid, logs: {stdout, stderr}, stop(): Promise<StopResult>,
      exited: Promise<{code, signal}> }`.
    - Spawn failure (ENOENT etc.) → typed `ServerStartError` carrying the argv[0] name.
-2. `ready.ts` — `waitUntilReady(url, timeoutMs, exited): Promise<void>`:
+2. `ready.ts` — `waitUntilReady(url, timeoutMs, running: RunningServer): Promise<void>`
+   (takes the full `RunningServer` so it can race on `running.exited` and read
+   `running.logs.stderr` for error tails):
    - Poll every 250 ms with `fetch(url, { method: "GET" })` and 1s per-attempt
      abort; **any HTTP response** (including 4xx/405 — Streamable HTTP servers may
      reject bare GET) counts as ready; only network-level failures keep polling.
-   - Races against `exited` — early server death → `ServerStartError` that includes
-     the last 20 lines of `server-stderr.log`.
+   - Races against `running.exited` — early server death → `ServerStartError` that
+     includes the last 20 lines of `running.logs.stderr`.
    - Timeout → `ReadyTimeoutError` (also with stderr tail).
 3. `stop.ts` — `stop()`:
    - `process.kill(-pid, "SIGTERM")`; if not exited within 5s, `process.kill(-pid,

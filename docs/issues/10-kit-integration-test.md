@@ -24,23 +24,28 @@ first evidence for Known unknown U3 (whether an expected-failures baseline is ne
 ## Detailed Requirements
 
 1. Fixture server: minimal SDK 1.29 `McpServer` with echo tool + one resource +
-   one prompt, `StreamableHTTPServerTransport`, binding `127.0.0.1:0`-style fixed
-   test port (pick 3799 to avoid clashes), stdio twin entry sharing the same server
-   definition. Written as plain TS compiled by the package's existing build test
-   tooling (tsx or prebuilt in test setup) — implementer picks the lighter option and
-   documents it in the test file header.
+   one prompt, `StreamableHTTPServerTransport` bound to `127.0.0.1:3799` (fixed
+   test port, chosen to avoid common dev-port clashes), stdio twin entry sharing
+   the same server definition. Fixtures are **prebuilt with `tsc`** in a test
+   setup step (`tsc -p test/fixtures/tsconfig.json`) — do not add `tsx` or any new
+   runtime dependency.
 2. Integration test:
-   - writes a temp `conformance.config.json` (http + stdio sections, port 3799,
-     `suite: "active"`, `specVersion: "2025-11-25"`);
-   - invokes the **built** CLI (`node dist/bin.js run --config …`) as a subprocess;
-   - asserts exit code 0, `report.json` exists and `summarize`-consistent, official
-     section engine version equals the pinned 0.1.16, smoke section all-MUST pass.
+   - creates a temp run directory and writes `conformance.config.json` into it
+     (http + stdio sections, port 3799, `suite: "active"`,
+     `specVersion: "2025-11-25"`; `reportDir` left at its default);
+   - invokes the **built** CLI (`node dist/bin.js run --config <tmpdir>/conformance.config.json`)
+     as a subprocess with `cwd = <tmpdir>`;
+   - asserts exit code 0; `<tmpdir>/conformance-results/report.json` exists at that
+     exact path (default `reportDir` resolves against the config file's directory —
+     issue 04) and is `summarize`-consistent; official section engine version
+     equals the pinned 0.1.16; smoke section all-MUST pass.
 3. If the real suite fails scenarios for the fixture server (U3): triage each failing
    scenario; fix the fixture if it's a fixture bug; if it is an upstream/spec gap,
    add `expected-failures.yaml` with a dated comment per entry and link evidence in
    the PR. The test then asserts exit 0 **with** that baseline and the report showing
    `expected_fail` statuses.
-4. CI: new job `kit-integration` in ci.yml (needs: quality, Node 24 only,
+4. CI: new job `kit-integration` in ci.yml (needs: quality, Node 24 only —
+   ISSUE_PLAN §1 fixes the matrix policy: quality on 22+24, heavier jobs on 24;
    `timeout-minutes: 20`) running `pnpm --filter @saber5656/mcp-conformance-kit
    test:integration` (separate vitest config/tag so unit stays fast).
 5. Record actual wall-clock of the job in the PR (baseline for later regressions).

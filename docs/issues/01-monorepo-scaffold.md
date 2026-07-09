@@ -29,8 +29,10 @@ modules, never fight tooling.
 ## Detailed Requirements
 
 1. Root `package.json`: `"private": true`, `"type": "module"`,
-   `"engines": {"node": ">=22"}`, `"packageManager": "pnpm@<current 10.x exact>"`,
-   scripts `build` / `test` / `lint` / `typecheck` fanning out via `pnpm -r`.
+   `"engines": {"node": ">=22"}`, `"packageManager": "pnpm@<exact>"` where `<exact>`
+   is resolved at implementation time via `npm view pnpm version` (record the value
+   in the PR description), scripts `build` / `test` / `lint` / `typecheck` fanning
+   out via `pnpm -r`.
 2. Both package `package.json` files:
    - names `@saber5656/create-mcp` and `@saber5656/mcp-conformance-kit`; version `0.1.0`;
      `"type": "module"`; `"license": "MIT"`; `"engines": {"node": ">=22"}`;
@@ -41,8 +43,10 @@ modules, never fight tooling.
    - `repository`, `bugs`, `homepage` pointing at `github.com/Saber5656/create-mcp`.
 3. Dev tooling versions from `docs/research/2026-07-mcp-ecosystem-survey.md` §6:
    typescript ^5.9, tsup ^8.5.1, vitest ^4.1.10, @biomejs/biome ^2.5.3. TypeScript
-   `strict: true`, `moduleResolution: "bundler"` (or `nodenext` — pick one, apply in
-   base config, document choice in a code comment in `tsconfig.base.json`).
+   `strict: true`, `module: "nodenext"` + `moduleResolution: "nodenext"` (binding
+   choice: these are Node-native ESM CLIs and the generated templates use NodeNext
+   too — one resolution model everywhere; note this rationale in a comment in
+   `tsconfig.base.json`).
 4. tsup: ESM only, `target: "node22"`, shebang preserved for bins (`banner` or source
    shebang), `dist/` output, d.ts generation ON for the kit (its API is public),
    OFF for create-mcp.
@@ -57,8 +61,9 @@ modules, never fight tooling.
       `pnpm typecheck` all exit 0 on Node 22 and Node 24.
 - [ ] `node packages/create-mcp/dist/index.js --version`-style placeholder run exits 0
       and prints the package version.
-- [ ] `pnpm -r exec npm pack --dry-run` succeeds; create-mcp tarball listing contains
-      `templates/`, kit tarball contains `dist/` and no `src/`.
+- [ ] `pnpm -r exec npm pack --pack-destination <tmp>` succeeds; `tar -tvf` of the
+      create-mcp tarball shows `templates/` and an executable-mode `dist/index.js`;
+      the kit tarball shows `dist/` (with executable `dist/bin.js`) and no `src/`.
 - [ ] `git status` clean after full build (`dist/` ignored).
 - [ ] LICENSE is exact MIT text with year 2026 and holder Saber5656.
 

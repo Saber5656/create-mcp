@@ -4,10 +4,12 @@ Add Changesets release pipeline with npm provenance
 
 ## Summary
 
-Set up Changesets for independent versioning of the two packages and a tag/manual-
-dispatch release workflow that publishes to npm with **provenance via OIDC Trusted
-Publishing** — no long-lived npm tokens anywhere — plus the documented manual user
-prerequisites (npm account/scope, Trusted Publisher registration).
+Set up Changesets for independent versioning of the two packages and the standard
+Changesets **version-PR release workflow** (the action maintains a "Version
+Packages" PR on `main`; merging it publishes to npm with **provenance via OIDC
+Trusted Publishing** and pushes the release tags it creates) — no long-lived npm
+tokens anywhere — plus the documented manual user prerequisites (npm account/scope,
+Trusted Publisher registration).
 
 ## Context
 
@@ -30,11 +32,11 @@ RELEASING.md — not by CI on this issue's PR.
    create-mcp devDependency on the kit (DESIGN §4.3 mechanism) gets a note in
    `.changeset/config.json` `updateInternalDependencies: "patch"` so kit releases
    propagate into create-mcp's next release automatically.
-2. `release.yml`:
-   - trigger: `workflow_dispatch` plus push of tags `v*` is NOT used (Changesets
-     flow): use the standard changesets/action "version PR" pattern — on push to
-     `main`, the action opens/updates a "Version Packages" PR; when that PR merges,
-     the action publishes;
+2. `release.yml` (the Changesets version-PR model per DESIGN §11 — tag-push
+   triggers are not used; the action itself pushes tags after publishing):
+   - trigger: `push` to `main` (plus `workflow_dispatch` for recovery) — the
+     changesets/action opens/updates the "Version Packages" PR; when that PR
+     merges, the same workflow run publishes;
    - `permissions: { contents: write, pull-requests: write, id-token: write }`
      scoped to the release job only; top-level stays `contents: read`;
    - publish step: `pnpm changeset publish` with `NPM_CONFIG_PROVENANCE=true`;
@@ -55,8 +57,11 @@ RELEASING.md — not by CI on this issue's PR.
      repo + `release.yml` as the trusted workflow (exact npm UI path documented);
    - repo settings: default-branch protection already assumed; environments not
      required in v1;
-   - first-publish order: kit first, then create-mcp (its devDependency reference
-     must resolve on the registry);
+   - first publish: one Changesets publish run releases both packages together —
+     no manual ordering is needed (the devDependency reference does not gate
+     publishing; it only needs to resolve when generated projects install, i.e.
+     after both are live). RELEASING.md instructs verifying both packages are
+     visible on the registry before announcing;
    - post-publish QA: `npm create @saber5656/mcp@latest` smoke on a clean machine
      (U5 check), badge proof if 16 deferred it.
 5. Dry-run proof on this issue's PR: `pnpm changeset version` on a scratch branch +

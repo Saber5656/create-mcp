@@ -14,7 +14,13 @@ service that records verified results.
 Generated projects get `.github/workflows/conformance.yml` (DESIGN.md §8) and embed
 that workflow's **status badge** in their README. Badge semantics: green means the
 official suite (`active` scenarios, spec 2025-11-25) plus the kit's smoke checks
-passed on the default branch of *that* repository. The kit writes a per-run summary
+passed on the default branch of *that* repository. For **stdio-only** projects the
+official suite cannot run (it tests HTTP endpoints only), so their badge covers the
+kit's smoke checks alone and their README must say exactly that — a stdio-only badge
+never claims official conformance. The badge does **not** prove security, code
+quality, or the correctness of the server's tool logic — only protocol conformance
+as tested. Generated READMEs must carry both of these claims (what green means for
+their variant; what the badge does not prove). The kit writes a per-run summary
 table to `$GITHUB_STEP_SUMMARY` as the human-readable detail behind the badge.
 
 ## Consequences

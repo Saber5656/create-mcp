@@ -32,18 +32,22 @@ minimal placeholder entry set used by tests.
    relative; no `..` segments; no leading `/` or drive letters; no backslashes;
    after `path.resolve(templateRoot, source)` the result must start with
    `templateRoot + sep` (same for `target` against a hypothetical root) — resolution
-   check implemented in the loader, not just regex.
+   check implemented in the loader, not just regex. Additionally: `source` basenames
+   must not begin with a dot (DESIGN §4.1 packaging rule — `dot-` prefixed sources
+   map to dotfile targets), `source` may end in `.tmpl`, and `target` must never
+   end in `.tmpl`.
 3. Duplicate `target` detection at parse time: two entries may share a `target` only
    if no single `(transport, packageManager)` combination satisfies both `when`
    conditions. Implement by enumerating the 3×2 combination space and checking each
    pair of same-target entries; co-occurring duplicates → parse error listing the
    colliding sources and the offending combination.
-4. `plan.ts` — `buildPlan(manifest, options, templateRoot, targetRoot): CopyPlan`
-   (DESIGN §7.2): include an entry iff every present `when` key matches
-   (`options.transport ∈ when.transport` AND `options.packageManager ∈
-   when.packageManager`; absent keys always match); output absolute source/target
-   paths + `substitute` flag; pure (no fs access — existence checks belong to the
-   copier).
+4. `plan.ts` — `buildPlan(manifest, options, templateRoot, targetRoot, mustCreate):
+   CopyPlan` (DESIGN §7.2: the plan carries `targetRoot` and `mustCreate` so the
+   copier receives one self-contained value): include an entry iff every present
+   `when` key matches (`options.transport ∈ when.transport` AND
+   `options.packageManager ∈ when.packageManager`; absent keys always match);
+   output absolute source/target paths + `substitute` flag; pure (no fs access —
+   existence checks belong to the copier).
 5. Repo coverage test: walk `templates/ts/**` files (excluding `template.json`);
    assert the set equals the set of manifest `source` values exactly (both
    directions), so dead files and unshipped files fail CI from issue 12 onward.
@@ -57,7 +61,8 @@ minimal placeholder entry set used by tests.
       `a\\b`, empty string, duplicate co-occurring targets); duplicate targets with
       disjoint transport sets accepted; duplicate targets with disjoint
       packageManager sets accepted (the two workflow variants case); empty `when`
-      object rejected; unknown keys rejected.
+      object rejected; unknown keys rejected; dot-leading `source` rejected;
+      `.tmpl`-suffixed `target` rejected.
 - [ ] `buildPlan` tested for all six `(transport, packageManager)` combinations
       against a fixture manifest (entry counts and exact target lists asserted;
       fixture includes a packageManager-conditioned pair sharing one target).

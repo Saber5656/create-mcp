@@ -31,17 +31,28 @@ unit tests. No process spawning, no CLI, no rendering.
    message "non-loopback URL requires --allow-remote". Export a second parse entry
    `parseConfig(json, { allowRemote: boolean })` that relaxes only this refinement —
    the CLI flag (issue 09) feeds it. **No DNS resolution** — string hostname check only.
-3. Loader `loadConfig(path?)`:
+3. Loader `loadConfig(path?, opts?: { allowRemote?: boolean })` (this exact
+   signature — issue 09 passes the CLI flag through it):
    - default path `conformance.config.json` in cwd;
    - reads file (max 1 MiB, reject larger with a config error), `JSON.parse`, zod
-     parse; zod issues are re-rendered as `<jsonPath>: <message>` lines.
+     parse (with `opts.allowRemote` feeding the loopback refinement); zod issues
+     are re-rendered as `<jsonPath>: <message>` lines;
+   - **path resolution rule**: after successful parse, resolve every relative path
+     field (`http.cwd`, `stdio.cwd`, `http.expectedFailures`, `reportDir`) against
+     the **directory containing the config file**; downstream modules (lifecycle,
+     adapter) always receive absolute paths;
    - Returns discriminated result `{ ok: true, config } | { ok: false, errors: string[] }`
      — never throws for user-input problems; throws only on kit bugs.
-4. Report model per DESIGN.md §7.4: export the TS types, plus
-   `emptyReport(kitVersion, specVersion)`, `summarize(report)` (recomputes `summary`
-   from checks; single source of truth), and `mergeSections(report, official?, smoke?)`.
-   `summarize` counts `expected_fail` and `unexpected_pass` per §7.4 statuses;
-   `unexpected_pass` counts as fail in `summary.fail`.
+4. Report model per DESIGN.md §7.4: export the TS types, plus:
+   - `emptyReport(kitVersion, specVersion, now: () => Date)` — sets `startedAt` from
+     the injected clock (`finishedAt` starts equal to `startedAt`);
+   - `finalizeReport(report, now)` — sets `finishedAt` and recomputes `summary`;
+   - `summarize(report)` (recomputes `summary` from checks; single source of truth)
+     counting `expected_fail` and `unexpected_pass` per §7.4 statuses, with
+     `unexpected_pass` counted inside `summary.fail`;
+   - `mergeSections(report, official?, smoke?)`;
+   - `truncateDetail(s, max = 500)` — shared helper for server-provided detail
+     strings (truncation marker appended when cut); consumed by issues 07 and 08.
 5. JSON Schema emission: use zod v4's native JSON Schema conversion
    (`z.toJSONSchema`); write to `schema/conformance-config.schema.json`; wire into the
    package build script so `pnpm build` refreshes it; commit the generated file; add
@@ -60,7 +71,12 @@ unit tests. No process spawning, no CLI, no rendering.
 - [ ] `schema/conformance-config.schema.json` exists after build, is valid JSON
       Schema (draft 2020-12), and `git diff --exit-code` passes after a rebuild
       (generation is deterministic).
-- [ ] The example config in DESIGN.md §5.5 parses successfully verbatim.
+- [ ] The example config in DESIGN.md §5.5, with its explanatory jsonc comments
+      stripped (it is documentation-flavored jsonc; `JSON.parse` takes the
+      comment-free form), parses successfully — keep the comment-free fixture in
+      the test file.
+- [ ] Path-resolution tests: relative `expectedFailures`/`cwd`/`reportDir` resolve
+      against the config file's directory, not `process.cwd()`.
 - [ ] 100% of exported functions have explicit return types; no `any` in the two files.
 
 ## Validation

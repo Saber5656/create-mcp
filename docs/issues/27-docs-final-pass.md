@@ -18,9 +18,11 @@ must end v1 truthful. This is deliberately the last issue.
 
 ## Scope
 
-Root `README.md`, `docs/DESIGN.md` (status header + any drift notes), `docs/
-ISSUE_PLAN.md` (§7/§8 outcomes), `CONTRIBUTING.md` touch-ups. No template or code
-changes (drift found here files bugs against owning issues instead).
+Root `README.md`, `docs/DESIGN.md` (status header + any drift notes),
+`docs/ISSUE_PLAN.md` (§7/§8 outcomes), `CONTRIBUTING.md` touch-ups, plus one small
+docs-verification script and its CI step (requirement 3) — that script is the only
+code in scope. No template or product-code changes (drift found here files bugs
+against owning issues instead).
 
 ## Detailed Requirements
 
@@ -30,8 +32,10 @@ changes (drift found here files bugs against owning issues instead).
    variant), next-steps block. Every captured block gets a comment marker
    (`<!-- captured: create-mcp vX.Y.Z, 2026-MM-DD -->`) so future drift is datable.
 2. README conformance section: excerpt of a real terminal report (color-off) and a
-   real `$GITHUB_STEP_SUMMARY` table screenshot from the dogfood run artifacts;
-   badge how-to updated with the confirmed activation steps (16/24 evidence).
+   screenshot of the job summary table taken from the dogfood run's page in the
+   GitHub Actions UI (link the run; no new artifact plumbing in issue 24 is
+   needed); badge how-to updated with the confirmed activation steps (16/24
+   evidence).
 3. Verify every command in README/CONTRIBUTING by executing it from a clean clone
    (script the check where feasible: extract fenced `sh` blocks marked
    `<!-- verify -->` and run them in CI once — lightweight, not a doc-test
@@ -43,9 +47,11 @@ changes (drift found here files bugs against owning issues instead).
 5. ISSUE_PLAN.md: mark §8 known-unknowns with their resolutions; confirm §7
    deferred list still matches reality (move anything that accidentally shipped or
    grew).
-6. Cross-check: no doc anywhere still says "planned"/"will" about shipped v1
-   behavior (`grep -ri "planned\|will be" README.md docs/` triaged line by line —
-   remaining hits must be about v1.1/v2).
+6. Cross-check: no shipped-behavior doc still says "planned"/"will" about v1
+   behavior — `grep -ri "planned\|will be" README.md CONTRIBUTING.md
+   docs/DESIGN.md docs/RELEASING.md` triaged line by line; remaining hits must be
+   about v1.1/v2. (`docs/issues/` and `docs/ISSUE_PLAN.md` are excluded: planning
+   language is their job.)
 
 ## Acceptance Criteria
 

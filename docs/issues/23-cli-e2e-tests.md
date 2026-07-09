@@ -23,7 +23,10 @@ generated project is issue 24's dogfood job, not here.)
 
 ## Detailed Requirements
 
-1. Matrix: `(stdio, npm)`, `(http, npm)`, `(both, npm)`, `(both, pnpm)` — four runs.
+1. Matrix: `(stdio, npm)`, `(http, npm)`, `(both, npm)`, `(both, pnpm)` — four
+   runs. pnpm coverage is deliberately limited to the `both` variant: template PM
+   variance affects only the workflow file and the install command, both of which
+   `(both, pnpm)` exercises.
    Each run:
    - `node packages/create-mcp/dist/index.js <tmp>/app --name e2e-app --transport
      <t> --pm <pm> --no-git --no-install --yes` (install performed explicitly in
@@ -40,9 +43,11 @@ generated project is issue 24's dogfood job, not here.)
    of the workspace kit before installing; helper `linkLocalKit(dir)` implements
    this and logs the substitution) → `<pm> run build` (tsc) → `<pm> test` (vitest
    from the template) — all exit 0.
-4. Negative e2e: run into a non-empty dir → exit 3, dir untouched; missing
-   `--transport` with `--yes` absent in non-TTY → exit 2 listing the flag; both
-   asserted on the built binary.
+4. Negative e2e (asserted on the built binary): run into a non-empty dir → exit 3,
+   dir untouched; non-TTY without `--yes` and without `--transport` → exit 2
+   listing the missing flags (per issue 18's resolution matrix: defaults do not
+   auto-apply non-interactively without `--yes`); non-TTY with `--yes` but no
+   targetDir → exit 2 naming the positional.
 5. CI job `cli-e2e`: needs `quality`, Node 24, `timeout-minutes: 20`; caches PM
    stores; runs the vitest e2e config.
 6. Runtime budget: whole suite ≤ 10 min in CI (parallelize variant dirs with

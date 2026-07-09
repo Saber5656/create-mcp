@@ -4,10 +4,12 @@ Author Streamable HTTP entrypoint template with secure defaults
 
 ## Summary
 
-Author `templates/ts/http/src/http.ts`: express 5 + `StreamableHTTPServerTransport`
-serving `/mcp` with every secure default from DESIGN.md §5.4 — loopback bind,
-Origin/DNS-rebinding protection (403), SDK session management, 1 MB body cap, error
-hygiene, graceful shutdown — for the `http` and `both` variants.
+Author the HTTP entrypoint pair for the `http` and `both` variants —
+`templates/ts/http/src/http-app.ts` (exported factory: express 5 app +
+`StreamableHTTPServerTransport`, the test seam) and `templates/ts/http/src/http.ts`
+(thin executable entry) — with every secure default from DESIGN.md §5.4: loopback
+bind, Origin/DNS-rebinding protection (403), SDK session management, 1 MB body cap,
+error hygiene, graceful shutdown.
 
 ## Context
 
@@ -18,14 +20,15 @@ names for rebinding protection must be verified against installed SDK 1.29.x.
 
 ## Scope
 
-One template source file + manifest entries (`when.transport: ["http","both"]`) +
-behavioral tests in the template harness. Conformance config ships in 15.
+Two template source files (`http/src/http-app.ts`, `http/src/http.ts`) + manifest
+entries (`when.transport: ["http","both"]`) + behavioral tests in the template
+harness. Conformance config ships in 15.
 
 ## Detailed Requirements
 
-1. Server setup:
-   - read `PORT` (default `3000`) and `HOST` (default `127.0.0.1`) from env; values
-     validated (port integer 1–65535) with fail-fast stderr message;
+1. `src/http-app.ts` — the factory and test seam (DESIGN §5.4):
+   - exports `createHttpApp(options: { host: string; port: number }): { app:
+     express.Express; transport: StreamableHTTPServerTransport; close(): Promise<void> }`;
    - express 5 app; `express.json({ limit: "1mb" })`;
    - one `StreamableHTTPServerTransport` configured with session management
      (`sessionIdGenerator: () => randomUUID()`) and DNS-rebinding/Origin protection
@@ -33,9 +36,14 @@ behavioral tests in the template harness. Conformance config ships in 15.
      **U4 step**: implementer verifies exact option names against the installed SDK
      (`node_modules/@modelcontextprotocol/sdk` types), records them in the PR, and
      updates DESIGN.md §5.4 if names differ from `enableDnsRebindingProtection`/
-     `allowedHosts`.
+     `allowedHosts`;
    - `app.all("/mcp", handler)` delegating POST/GET/DELETE to the transport per SDK
      idiom; unknown routes → 404 JSON.
+   `src/http.ts` — thin entry: read env `PORT` (default `3000`) / `HOST` (default
+   `127.0.0.1`), validate (port integer 1–65535) with fail-fast stderr message,
+   call `createHttpApp`, `app.listen(port, host)`, install signal handlers.
+   Behavioral tests import the factory and listen on an ephemeral port; only the
+   shutdown test spawns the built entry.
 2. Behavior required by tests:
    - request with `Origin: https://evil.example` → **403**;
    - request without Origin from loopback → served;
@@ -44,11 +52,13 @@ behavioral tests in the template harness. Conformance config ships in 15.
      non-2xx);
    - body >1 MB → 413;
    - unexpected handler error → 500 JSON `{"error":"internal error"}`, stack only on
-     stderr (test triggers via a temporary route in test harness — keep template
-     clean; test may monkey-patch);
-   - `HOST` default binds loopback: connecting via a non-loopback interface address
-     fails (assert `server.address().address === "127.0.0.1"` instead of real
-     multi-homed testing).
+     stderr (test mounts an extra throwing route on the factory-returned `app` —
+     the template stays clean; the express error middleware under test is the
+     template's);
+   - `HOST` default binds loopback: the shutdown test spawns the built entry with
+     no `HOST` set and asserts the logged listen address is `127.0.0.1` (and the
+     factory test asserts `server.address().address === "127.0.0.1"` when
+     listening with the default host value).
 3. Shutdown: SIGINT/SIGTERM → stop accepting (`httpServer.close`), close transport +
    server, exit 0 ≤5s; force path exit 1 on second signal. README warning comment
    (one line) at the `HOST` read: "0.0.0.0 exposes this server to your network — add

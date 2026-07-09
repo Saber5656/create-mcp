@@ -35,16 +35,20 @@ for package.json.
      immediately followed by a "Activate this badge" callout: replace
      `your-github-user/your-repo` (the literal substituted value of
      `__MCP_TMPL_BADGE_PATH__`, DESIGN §4.3) with the real owner/repo after pushing;
-   - "What the badge proves" paragraph: exact ADR-006 semantics (official suite
-     `active` @ spec 2025-11-25 + smoke checks, on default branch) and what it does
-     not prove;
+   - "What the badge proves" paragraph, **variant-specific** per ADR-006: http and
+     both variants claim official suite `active` @ spec 2025-11-25 + smoke checks
+     on the default branch; the **stdio variant claims kit smoke checks only and
+     explicitly states the official suite does not run for stdio-only projects**.
+     All variants carry ADR-006's negative claim (does not prove security, code
+     quality, or tool-logic correctness);
    - Quickstart: install (PM-neutral wording: "npm install / pnpm install"), build,
      test, `conformance` (with the build-first rule from DESIGN §5.5);
    - Project structure table (files from DESIGN §4.1 for that variant);
    - "Extending the server": add a tool via `src/tools/`, re-run conformance;
    - Conformance section: what runs per variant, `conformance-results/report.json`,
-     expected-failures baseline how-to (issue 15's file), link to the official suite
-     repo and MCP Inspector;
+     expected-failures baseline how-to (issue 15's file), links to
+     https://github.com/modelcontextprotocol/conformance and
+     https://github.com/modelcontextprotocol/inspector;
    - Security notes: loopback-bind default and the 0.0.0.0 warning (http variants),
      no-auth-in-v1 statement with link to MCP authorization spec, `.env` hygiene
      (all variants), "logging goes to stderr" note (stdio variants).
@@ -53,9 +57,11 @@ for package.json.
    `args: ["<abs path>/dist/stdio.js"]` and a "paths must be absolute" warning).
 4. http variants additionally: endpoint URL, session header note, curl example for
    initialize (copy-paste runnable), PORT/HOST env table mirroring `.env.example`.
-5. A shared-content sync test (like issue 12's): the three files' common sections
-   (badge line, badge semantics paragraph, security `.env` note) are byte-identical
-   — extract-and-compare in a unit test to prevent drift.
+5. A shared-content sync test (like issue 12's): the sections that are common by
+   design — badge line, ADR-006 negative claim sentence, security `.env` note —
+   are byte-identical across the three files (extract-and-compare in a unit test).
+   The badge-semantics positive claim is variant-specific by requirement 2 and is
+   excluded from the sync test.
 6. No invented commands: every command shown must exist in the corresponding
    package.json variant (test greps script names against the variant tmpls).
 
@@ -67,8 +73,9 @@ for package.json.
       (string-level test).
 - [ ] Every external link HTTPS and resolvable (link-check step or manual pass
       pasted in PR).
-- [ ] The "what the badge proves / does not prove" wording matches ADR-006's two
-      claims verbatim.
+- [ ] The "what the badge proves / does not prove" wording matches ADR-006's
+      variant-specific positive claim and shared negative claim (reviewer diffs
+      against the ADR-006 Decision paragraph).
 
 ## Validation
 

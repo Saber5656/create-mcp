@@ -33,16 +33,21 @@ and `docs/SECURITY-SETTINGS.md` (checklist of GitHub UI settings). No product co
    `javascript-typescript`), on `push` to main, `pull_request`, and weekly
    schedule; `permissions: { security-events: write, contents: read }`; SHA-pinned
    actions; `timeout-minutes: 30`.
-3. Workflow-audit unit test (repo test, runs in `quality`): parse every
-   `.github/workflows/*.yml` in this repo and assert: top-level or job-level
-   `permissions` present; no `pull_request_target` trigger; every `uses:` SHA-pinned
-   (40-hex + comment); `timeout-minutes` present on every job. (This locks BND-8
-   as a regression test rather than a review-time hope. Template workflows under
-   `templates/` are covered by issue 16's own tests — exclude that path here.)
+3. Workflow-audit unit test (repo test, runs in `quality`) over every
+   `.github/workflows/*.yml` in this repo, using two complementary passes:
+   **parsed YAML** for structure (top-level or job-level `permissions` present; no
+   `pull_request_target` trigger; `timeout-minutes` present on every job) and
+   **raw text** for the pin rule (every `uses:` line matches
+   `@[0-9a-f]{40} # v` — YAML parsers drop comments, so the SHA-comment check must
+   read the raw file). This locks BND-8 as a regression test rather than a
+   review-time hope. Template workflows under `templates/` are covered by issue
+   16's own tests — exclude that path here.
 4. `docs/SECURITY-SETTINGS.md`: checklist with exact GitHub UI paths for — secret
    scanning ON, push protection ON, private vulnerability reporting ON (pairs with
    SECURITY.md from 03), branch protection on `main` (already provisioned by the
-   user's rulesets — verify and record), tag protection for release tags,
+   user's rulesets — verify and record), tag protection/ruleset for the `v*` tags
+   the Changesets release workflow pushes (issue 25's model: release tags are
+   outputs of publishing and must only come from that workflow or the maintainer),
    Dependabot alerts ON. Each item phrased as verifiable ("Settings → … shows …")
    so the user can confirm and tick.
 5. Do not change GitHub settings via API in this issue — settings are user-owned;

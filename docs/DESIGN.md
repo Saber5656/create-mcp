@@ -203,7 +203,9 @@ packages/create-mcp/templates/ts/
 │   ├── src/http.ts                # express@5 + StreamableHTTPServerTransport entry (§5)
 │   └── conformance.config.json.tmpl
 └── ci/
-    └── github/workflows/conformance.yml.tmpl
+    └── github/workflows/
+        ├── conformance.npm.yml.tmpl    # when packageManager=npm  → .github/workflows/conformance.yml
+        └── conformance.pnpm.yml.tmpl   # when packageManager=pnpm → same target
 ```
 
 Generated file sets:
@@ -224,7 +226,10 @@ Zod-validated at CLI start (a broken bundled manifest is a defect → exit 4):
   "version": 1,
   "files": [
     { "source": "base/package.json.tmpl", "target": "package.json", "substitute": true },
-    { "source": "http/src/http.ts", "target": "src/http.ts", "when": { "transport": ["http", "both"] } }
+    { "source": "http/src/http.ts", "target": "src/http.ts", "when": { "transport": ["http", "both"] } },
+    { "source": "ci/github/workflows/conformance.pnpm.yml.tmpl",
+      "target": ".github/workflows/conformance.yml",
+      "when": { "packageManager": ["pnpm"] } }
   ]
 }
 ```
@@ -232,8 +237,13 @@ Zod-validated at CLI start (a broken bundled manifest is a defect → exit 4):
 Rules enforced by `manifest.ts` + `plan.ts`:
 - `source` and `target` must be relative, must not contain `..` or be absolute, and must
   resolve inside the template dir / target dir respectively (checked after resolution).
-- `when.transport` is the only supported condition key in v1 (keep the schema closed:
-  `strict()` so unknown keys fail loudly).
+- `when` supports exactly two condition keys in v1 — `transport`
+  (`("stdio"|"http"|"both")[]`) and `packageManager` (`("npm"|"pnpm")[]`). Multiple
+  keys on one entry AND together. The schema stays closed (`strict()` so unknown keys
+  fail loudly).
+- Two entries may share a `target` only if their `when` conditions cannot co-occur
+  for any single `(transport, packageManager)` combination; the manifest loader
+  rejects co-occurring duplicates at parse time.
 - Every file in `templates/ts/**` except `template.json` must be referenced by exactly
   one manifest entry; a repo unit test enforces this (no dead or unshipped files).
 
@@ -246,7 +256,7 @@ engine (ADR-004):
 | Token (literal text in file) | Replacement |
 |---|---|
 | `__MCP_TMPL_PACKAGE_NAME__` | validated package name |
-| `__MCP_TMPL_KIT_DEP_VERSION__` | `^<current kit version>` (read from create-mcp's own package.json at build time) |
+| `__MCP_TMPL_KIT_DEP_VERSION__` | the version spec of the `@saber5656/mcp-conformance-kit` devDependency declared in create-mcp's own package.json, captured at build time into a generated `src/kit-version.ts` constant (Changesets bumps that devDependency on kit releases, keeping generated projects current) |
 | `__MCP_TMPL_TRANSPORT__` | `stdio` \| `http` \| `both` |
 | `__MCP_TMPL_BADGE_PATH__` | `<OWNER>/<REPO>` placeholder text `your-github-user/your-repo` (user fills; README explains) |
 | `__MCP_TMPL_NODE_MIN__` | `22` |
@@ -525,8 +535,12 @@ steps conditional by transport tokens):
 
 - Triggers: `push` (default branch), `pull_request`, `workflow_dispatch`.
 - Permissions: `contents: read` only. Concurrency: cancel-in-progress per ref.
-- Steps: checkout → setup-node (Node 24, cache for detected PM) → install (`npm ci` /
-  `pnpm install --frozen-lockfile`) → `npm run build` → `npm run conformance`.
+- Steps: checkout → setup-node (Node 24, cache for the chosen PM) → install
+  (`npm ci` / `pnpm install --frozen-lockfile`) → build script → conformance script.
+  The npm and pnpm variants are two complete workflow template files selected by the
+  manifest's `when.packageManager` condition (§4.2) — no in-file conditionals, and
+  the pnpm variant adds the `pnpm/action-setup` step. Both render to the same target
+  path `.github/workflows/conformance.yml` (the badge URL depends on that filename).
 - All third-party actions pinned to **full commit SHAs** with a trailing
   `# vX.Y.Z` comment.
 - The kit auto-detects `GITHUB_STEP_SUMMARY` and publishes the report table; the
